@@ -57,7 +57,7 @@ class Route
         $matchd = false;
 
         $rule = str_replace(["/*","/:"], ["/{__any__}:*","/{__any__}:"], $rule);
-
+        $rule_origin = $rule;
         $rule = str_replace("/", "\\/", $rule);
 
         $rule_string = preg_replace_callback('/\/\{([a-z-0-9_]+)\}\??(:\(?[^\/]+\)?)?/i', function ($m) use (&$names, &$matchd) {
@@ -107,7 +107,7 @@ class Route
             }
         } else {
 
-            if ($url == $rule_string) {
+            if ($url == $rule_origin) {
                 self::w_m([], $do);
             }
         }
