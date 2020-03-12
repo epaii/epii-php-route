@@ -28,11 +28,30 @@ class Route
         '?' => '/([^\/]+)'
     ];
 
+    private static $_config = [
+        "uri_ignore" => ""
+    ];
+
+    public static function set_config($config)
+    {
+        self::$_config = array_merge(self::$_config, $config);
+    }
+
     private static $_matched = false;
 
     public static function __callStatic($name, $arguments)
     {
         self::rule($arguments[0], $arguments[1], strtoupper($name));
+    }
+
+    public static function get_uri()
+    {
+        $file_name = $_SERVER["SCRIPT_NAME"];
+        $url = $_SERVER["REQUEST_URI"];
+        if (($find = stripos($url, $file_name)) !== false) {
+            $url = substr($url, $find + strlen($file_name));
+        }
+        return str_replace(self::$_config["uri_ignore"], "", $url);
     }
 
     public static function rule(string $rule, $do, $http_type = "ANY")
@@ -52,11 +71,12 @@ class Route
         if (self::$_matched) return;
 
 
-        $url = $_SERVER["REQUEST_URI"];
+        $url = self::get_uri();
+
         $names = [];
         $matchd = false;
 
-        $rule = str_replace(["/*","/:"], ["/{__any__}:*","/{__any__}:"], $rule);
+        $rule = str_replace(["/*", "/:"], ["/{__any__}:*", "/{__any__}:"], $rule);
         $rule_origin = $rule;
         $rule = str_replace("/", "\\/", $rule);
 
@@ -77,7 +97,7 @@ class Route
             }
 
             $matchd = true;
-            return  $p;
+            return $p;
         }, trim($rule));
 
 
@@ -89,17 +109,20 @@ class Route
             }
 
 
-
-            if (preg_match("/" . "^" . $rule_string . "/is", $url, $m)) {
+            if (preg_match("/" . "^" . $rule_string . "$/is", $url, $m)) {
 
                 if ($m) {
                     array_shift($m);
                     $args = $m;
                     foreach ($m as $key => $value) {
-                        if ($names[$key] == "__any__") continue;
-                        if ($names[$key] !== null) {
-                            $_REQUEST[$names[$key]] = $_GET[$names[$key]] = $args[$names[$key]] = $value;
+                        if (isset($names[$key]))
+                        {
+                            if ($names[$key] == "__any__") continue;
+                            if ($names[$key] !== null) {
+                                $_REQUEST[$names[$key]] = $_GET[$names[$key]] = $args[$names[$key]] = $value;
+                            }
                         }
+
                     }
 
                     self::w_m($args, $do);
@@ -115,7 +138,6 @@ class Route
 
     private static function w_m($args, $do)
     {
-
 
 
         self::$_matched = true;
@@ -165,8 +187,7 @@ class Route
                     $_args[$key] = $args[$value];
             }
         }
-        if ( (!$_args) && (count($_args_name)==1))
-        {
+        if ((!$_args) && (count($_args_name) == 1)) {
             $_args = [$args];
         }
         return $_args;
